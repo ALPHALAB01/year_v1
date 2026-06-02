@@ -55,7 +55,7 @@ const json = (data, status = 200) =>
 export async function onRequestGet({ env }) {
   try {
     const { results } = await env.DB.prepare(
-      "SELECT id, time, content, keywords, created_at FROM history ORDER BY created_at DESC"
+      "SELECT id, time, content, keywords, is_default, created_at FROM history ORDER BY created_at DESC"
     ).all();
     return json({ ok: true, items: results || [] });
   } catch (e) {
@@ -71,15 +71,16 @@ export async function onRequestPost({ request, env }) {
 
     const time = normalizeTime(body.time || "");
     const keywords = normalizeKeywords(body.keywords || "");
+    const isDefault = body.is_default ? 1 : 0;
     const now = Date.now();
 
     const res = await env.DB.prepare(
-      "INSERT INTO history (time, content, keywords, created_at) VALUES (?, ?, ?, ?)"
-    ).bind(time, content, keywords, now).run();
+      "INSERT INTO history (time, content, keywords, is_default, created_at) VALUES (?, ?, ?, ?, ?)"
+    ).bind(time, content, keywords, isDefault, now).run();
 
     return json({
       ok: true,
-      item: { id: res.meta.last_row_id, time, content, keywords, created_at: now }
+      item: { id: res.meta.last_row_id, time, content, keywords, is_default: isDefault, created_at: now }
     });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
