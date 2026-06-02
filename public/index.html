@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>연혁 매칭 시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2129;
+    --panel-2: #222b35;
+    --line: #313d49;
+    --ink: #e8eef2;
+    --ink-dim: #8b9aa7;
+    --accent: #d4a857;
+    --accent-soft: #3a3220;
+    --green: #5fb88a;
+    --red: #d06b5e;
+    --blue: #6b9bd0;
+    --shadow: 0 12px 40px rgba(0,0,0,.45);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans KR', sans-serif;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(212,168,87,.08), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(95,184,138,.06), transparent 40%),
+      var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px 80px; }
+
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(15,20,25,.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .head-inner { max-width: 1040px; margin: 0 auto; padding: 18px 24px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+  .brand { font-family: 'Gowun Batang', serif; font-size: 21px; font-weight: 700; letter-spacing: -.5px; }
+  .brand span { color: var(--accent); }
+  nav { display: flex; gap: 4px; margin-left: auto; }
+  .tab {
+    background: none; border: none; color: var(--ink-dim);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all .18s;
+  }
+  .tab:hover { color: var(--ink); background: var(--panel); }
+  .tab.active { color: var(--bg); background: var(--accent); }
+
+  .page { display: none; animation: fade .35s ease; padding-top: 40px; }
+  .page.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .ptitle { font-family: 'Gowun Batang', serif; font-size: 28px; font-weight: 700; margin-bottom: 6px; letter-spacing: -.5px; }
+  .psub { color: var(--ink-dim); font-size: 14px; margin-bottom: 32px; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px; box-shadow: var(--shadow); }
+
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--accent); margin: 18px 0 8px; letter-spacing: .3px; }
+  label:first-child { margin-top: 0; }
+  .hint { font-size: 12px; color: var(--ink-dim); font-weight: 400; margin-left: 6px; }
+
+  input, textarea {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 9px; color: var(--ink); font-family: inherit; font-size: 14px;
+    padding: 12px 14px; transition: border .18s;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 120px; }
+  textarea.tall { min-height: 200px; }
+
+  .btn {
+    background: var(--accent); color: var(--bg); border: none;
+    font-family: inherit; font-weight: 600; font-size: 14px;
+    padding: 12px 26px; border-radius: 9px; cursor: pointer;
+    transition: all .18s; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn:active { transform: none; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.sm { padding: 7px 14px; font-size: 12.5px; }
+  .btn-row { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip {
+    background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);
+    font-size: 12.5px; font-weight: 500; padding: 4px 12px; border-radius: 20px;
+  }
+  .kw-examples { margin-top: 9px; font-size: 12px; color: var(--ink-dim); }
+  .kw-examples b { color: var(--ink); font-weight: 500; }
+
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .search { flex: 1; min-width: 200px; }
+  .count { font-size: 13px; color: var(--ink-dim); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; color: var(--ink-dim); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--line); letter-spacing: .5px; }
+  td { padding: 14px 12px; border-bottom: 1px solid var(--line); font-size: 13.5px; vertical-align: top; }
+  tr:hover td { background: var(--panel-2); }
+  .time-cell { white-space: nowrap; color: var(--accent); font-weight: 600; }
+  .kw-cell { display: flex; flex-wrap: wrap; gap: 5px; }
+  .kw-cell .chip { font-size: 11px; padding: 2px 9px; }
+  .row-actions { display: flex; gap: 4px; white-space: nowrap; }
+  .icon-btn { background: none; border: none; cursor: pointer; font-size: 15px; padding: 5px 7px; border-radius: 6px; transition: background .15s; }
+  .icon-btn.edit { color: var(--blue); }
+  .icon-btn.edit:hover { background: rgba(107,155,208,.15); }
+  .icon-btn.del { color: var(--red); }
+  .icon-btn.del:hover { background: rgba(208,107,94,.15); }
+  .empty { text-align: center; color: var(--ink-dim); padding: 50px 20px; font-size: 14px; }
+
+  /* edit inline inputs */
+  .edit-row td { background: var(--accent-soft) !important; }
+  .edit-row input { font-size: 13px; padding: 8px 10px; }
+
+  .out-result { margin-top: 26px; display: none; }
+  .out-result.show { display: block; animation: fade .4s; }
+  .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+  .a-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 11px; padding: 18px; }
+  .a-box h4 { font-size: 13px; color: var(--accent); margin-bottom: 10px; }
+  .a-box p, .a-box li { font-size: 13.5px; line-height: 1.7; }
+  .a-box ul { padding-left: 18px; }
+  .matched-kw { display: flex; flex-wrap: wrap; gap: 7px; }
+
+  .output-block { background: var(--panel-2); border: 1px solid var(--line); border-radius: 11px; padding: 22px; position: relative; }
+  .output-block .lbl { font-size: 12px; color: var(--ink-dim); margin-bottom: 14px; letter-spacing: .5px; text-transform: uppercase; }
+  #outputText { white-space: pre-wrap; font-size: 14px; line-height: 1.85; }
+  .copy-btn { position: absolute; top: 18px; right: 18px; }
+  .copy-btn.done { background: var(--green); }
+
+  .loader { display: none; align-items: center; gap: 12px; margin-top: 26px; color: var(--ink-dim); font-size: 14px; }
+  .loader.show { display: flex; }
+  .spin { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: rot .7s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--accent); color: var(--bg); padding: 12px 26px; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: var(--shadow); opacity: 0; transition: all .3s; z-index: 99; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.err { background: var(--red); }
+
+  .note { background: rgba(107,155,208,.1); border: 1px solid var(--blue); color: #aecaf0; padding: 13px 16px; border-radius: 9px; font-size: 13px; margin-top: 18px; }
+  .err { background: rgba(208,107,94,.12); border: 1px solid var(--red); color: #f0a99e; padding: 14px; border-radius: 9px; font-size: 13.5px; margin-top: 18px; }
+
+  @media (max-width: 680px) {
+    .analysis-grid { grid-template-columns: 1fr; }
+    .ptitle { font-size: 23px; }
+    nav { width: 100%; margin-left: 0; }
+    .tab { flex: 1; padding: 8px 8px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <div class="brand">연혁<span>매칭</span> 시스템</div>
+    <nav>
+      <button class="tab active" data-page="input">입력</button>
+      <button class="tab" data-page="db">데이터베이스</button>
+      <button class="tab" data-page="output">출력</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- PAGE 1: INPUT -->
+  <section class="page active" id="page-input">
+    <h1 class="ptitle">연혁 입력</h1>
+    <p class="psub">사업 실적·연혁을 등록합니다. 모든 데이터는 클라우드에 저장되어 어느 기기에서나 동일하게 보입니다.</p>
+    <div class="card">
+      <label>시기 <span class="hint">어떻게 입력해도 YY.MM 형태로 저장됩니다 (예: 2023.6 → 23.06)</span></label>
+      <input id="in-time" placeholder="2023.06  또는  23년 6월  또는  2306">
+      <div class="kw-examples" id="time-preview"></div>
+
+      <label>내용 <span class="hint">사업명·역할·성과 등을 자유롭게 작성</span></label>
+      <textarea id="in-content" placeholder="○○부 데이터 플랫폼 구축 용역 - 데이터 아키텍처 설계 및 ETL 파이프라인 개발 총괄"></textarea>
+
+      <label>키워드 <span class="hint">띄어쓰기로 여러 개 입력</span></label>
+      <input id="in-keywords" placeholder="선정 협력 인가 수상">
+      <div class="kw-examples">예시 키워드: <b>기본 · 선정 · 협력 · 지정 · 인가 · 등록 · 수상</b></div>
+      <div class="chips" id="kw-preview"></div>
+
+      <div class="btn-row">
+        <button class="btn" id="save-btn">데이터베이스에 저장</button>
+        <button class="btn ghost" id="clear-btn">입력 초기화</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAGE 2: DATABASE -->
+  <section class="page" id="page-db">
+    <h1 class="ptitle">데이터베이스</h1>
+    <p class="psub">저장된 연혁입니다. 연필 아이콘으로 수정, X 아이콘으로 삭제할 수 있습니다.</p>
+    <div class="card">
+      <div class="toolbar">
+        <input class="search" id="db-search" placeholder="시기·내용·키워드 검색...">
+        <span class="count" id="db-count">불러오는 중...</span>
+        <button class="btn ghost sm" id="refresh-btn">새로고침</button>
+      </div>
+      <div id="db-table-wrap"><div class="empty">불러오는 중...</div></div>
+    </div>
+  </section>
+
+  <!-- PAGE 3: OUTPUT -->
+  <section class="page" id="page-output">
+    <h1 class="ptitle">제안서 매칭 출력</h1>
+    <p class="psub">제안요청서·과업지시서를 붙여넣으면 AI가 사업을 분석하고 적합한 연혁을 정리합니다.</p>
+    <div class="card">
+      <label>제안요청서 / 과업지시서 내용</label>
+      <textarea class="tall" id="rfp-text" placeholder="제안요청서(RFP) 또는 과업지시서 전문을 붙여넣으세요..."></textarea>
+
+      <label>출력 양식 <span class="hint">원하는 연혁 표기 형식 (선택)</span></label>
+      <input id="format-text" placeholder="예: [시기] 사업명 — 주요 수행내용">
+
+      <div class="btn-row">
+        <button class="btn" id="analyze-btn">AI 분석 및 매칭 실행</button>
+      </div>
+      <div class="loader" id="loader"><div class="spin"></div><span>사업 내용을 분석하는 중...</span></div>
+      <div id="err-box"></div>
+    </div>
+
+    <div class="out-result" id="out-result">
+      <div class="analysis-grid">
+        <div class="a-box"><h4>사업 내용 인식</h4><p id="a-summary"></p></div>
+        <div class="a-box"><h4>요구 역량</h4><ul id="a-capabilities"></ul></div>
+      </div>
+      <div class="a-box" style="margin-bottom:22px">
+        <h4>적합 키워드 매칭</h4>
+        <div class="matched-kw" id="a-keywords"></div>
+      </div>
+      <div class="output-block">
+        <div class="lbl">제안서용 연혁 (복사 가능)</div>
+        <button class="btn copy-btn" id="copy-btn">복사하기</button>
+        <div id="outputText"></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ helpers ============ */
+const $ = s => document.querySelector(s);
+function toast(msg, isErr) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  setTimeout(() => t.className = 'toast', 1900);
+}
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function kwArray(str){ return (str||'').split(/\s+/).filter(Boolean); }
+
+// 클라이언트 측 미리보기용 시기 변환 (서버와 동일 로직)
+function previewTime(raw){
+  if(!raw) return '';
+  const d=(raw.match(/\d/g)||[]).join('');
+  if(!d.length) return '';
+  let yy='',mm='';
+  if(d.length>=6){yy=d.slice(2,4);mm=d.slice(4,6);}
+  else if(d.length===5){ if(d.startsWith('19')||d.startsWith('20')){yy=d.slice(2,4);mm='0'+d.slice(4,5);} else {yy=d.slice(0,2);mm=d.slice(2,4);} }
+  else if(d.length===4){ if(d.startsWith('19')||d.startsWith('20')){yy=d.slice(2,4);mm='01';} else {yy=d.slice(0,2);mm=d.slice(2,4);} }
+  else if(d.length===3){yy=d.slice(0,2);mm='0'+d.slice(2,3);}
+  else if(d.length===2){yy=d;mm='01';}
+  else {yy='0'+d;mm='01';}
+  let m=parseInt(mm,10); if(isNaN(m)||m<1)m=1; if(m>12)m=12;
+  return yy+'.'+String(m).padStart(2,'0');
+}
+
+/* ============ nav ============ */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    $('#page-' + tab.dataset.page).classList.add('active');
+    if (tab.dataset.page === 'db') loadDB();
+  });
+});
+
+/* ============ Page 1: input ============ */
+const inKw = $('#in-keywords');
+inKw.addEventListener('input', () => {
+  $('#kw-preview').innerHTML = kwArray(inKw.value).map(k => `<span class="chip">${esc(k)}</span>`).join('');
+});
+
+$('#in-time').addEventListener('input', e => {
+  const v = previewTime(e.target.value);
+  $('#time-preview').innerHTML = v ? `저장 형태: <b>${esc(v)}</b>` : '';
+});
+
+$('#save-btn').addEventListener('click', async () => {
+  const content = $('#in-content').value.trim();
+  if (!content) { toast('내용을 입력하세요', true); return; }
+  const btn = $('#save-btn'); btn.disabled = true;
+  try {
+    const res = await fetch('/api/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        time: $('#in-time').value,
+        content,
+        keywords: inKw.value
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '저장 실패');
+    $('#in-time').value = ''; $('#in-content').value = ''; inKw.value = ''; $('#kw-preview').innerHTML = '';
+    toast('저장되었습니다');
+  } catch (e) {
+    toast('저장 실패: ' + e.message, true);
+  } finally { btn.disabled = false; }
+});
+
+$('#clear-btn').addEventListener('click', () => {
+  $('#in-time').value = ''; $('#in-content').value = ''; inKw.value = ''; $('#kw-preview').innerHTML = '';
+});
+
+/* ============ Page 2: database ============ */
+let cache = [];
+let editingId = null;
+
+async function loadDB() {
+  $('#db-count').textContent = '불러오는 중...';
+  try {
+    const res = await fetch('/api/history');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    cache = data.items;
+    renderDB();
+  } catch (e) {
+    $('#db-table-wrap').innerHTML = `<div class="err">불러오기 실패: ${esc(e.message)}</div>`;
+    $('#db-count').textContent = '오류';
+  }
+}
+
+function renderDB() {
+  const q = $('#db-search').value.toLowerCase();
+  const filtered = cache.filter(r =>
+    !q || (r.time||'').toLowerCase().includes(q) ||
+    (r.content||'').toLowerCase().includes(q) ||
+    (r.keywords||'').toLowerCase().includes(q)
+  );
+  $('#db-count').textContent = filtered.length + '건';
+  const wrap = $('#db-table-wrap');
+  if (!filtered.length) {
+    wrap.innerHTML = `<div class="empty">${cache.length===0 ? '아직 저장된 연혁이 없습니다.' : '검색 결과가 없습니다.'}</div>`;
+    return;
+  }
+  let html = '<table><thead><tr><th style="width:90px">시기</th><th>내용</th><th style="width:200px">키워드</th><th style="width:80px"></th></tr></thead><tbody>';
+  filtered.forEach(r => {
+    if (editingId === r.id) {
+      html += `<tr class="edit-row" data-id="${r.id}">
+        <td><input class="e-time" value="${esc(r.time)}" placeholder="2306"></td>
+        <td><textarea class="e-content" style="min-height:60px">${esc(r.content)}</textarea></td>
+        <td><input class="e-kw" value="${esc(r.keywords)}" placeholder="선정 협력"></td>
+        <td><div class="row-actions">
+          <button class="icon-btn edit save-edit" title="저장">✓</button>
+          <button class="icon-btn del cancel-edit" title="취소">✕</button>
+        </div></td>
+      </tr>`;
+    } else {
+      html += `<tr data-id="${r.id}">
+        <td class="time-cell">${esc(r.time)||'-'}</td>
+        <td>${esc(r.content)}</td>
+        <td><div class="kw-cell">${kwArray(r.keywords).map(k=>`<span class="chip">${esc(k)}</span>`).join('')}</div></td>
+        <td><div class="row-actions">
+          <button class="icon-btn edit do-edit" title="수정">✎</button>
+          <button class="icon-btn del do-del" title="삭제">✕</button>
+        </div></td>
+      </tr>`;
+    }
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('.do-edit').forEach(b => b.addEventListener('click', e => {
+    editingId = parseInt(e.target.closest('tr').dataset.id, 10); renderDB();
+  }));
+  wrap.querySelectorAll('.cancel-edit').forEach(b => b.addEventListener('click', () => { editingId = null; renderDB(); }));
+  wrap.querySelectorAll('.do-del').forEach(b => b.addEventListener('click', e => deleteItem(parseInt(e.target.closest('tr').dataset.id, 10))));
+  wrap.querySelectorAll('.save-edit').forEach(b => b.addEventListener('click', e => saveEdit(parseInt(e.target.closest('tr').dataset.id, 10))));
+}
+
+async function saveEdit(id) {
+  const row = document.querySelector(`tr.edit-row[data-id="${id}"]`);
+  const content = row.querySelector('.e-content').value.trim();
+  if (!content) { toast('내용을 입력하세요', true); return; }
+  try {
+    const res = await fetch('/api/history/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        time: row.querySelector('.e-time').value,
+        content,
+        keywords: row.querySelector('.e-kw').value
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    editingId = null;
+    await loadDB();
+    toast('수정되었습니다');
+  } catch (e) { toast('수정 실패: ' + e.message, true); }
+}
+
+async function deleteItem(id) {
+  if (!confirm('이 연혁을 삭제할까요?')) return;
+  try {
+    const res = await fetch('/api/history/' + id, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    await loadDB();
+    toast('삭제되었습니다');
+  } catch (e) { toast('삭제 실패: ' + e.message, true); }
+}
+
+$('#db-search').addEventListener('input', renderDB);
+$('#refresh-btn').addEventListener('click', loadDB);
+
+/* ============ Page 3: output (AI) ============ */
+$('#analyze-btn').addEventListener('click', async () => {
+  const rfp = $('#rfp-text').value.trim();
+  const errBox = $('#err-box'); errBox.innerHTML = '';
+  if (!rfp) { toast('제안요청서 내용을 입력하세요', true); return; }
+  if (!cache.length) { await loadDB(); }
+  if (!cache.length) { errBox.innerHTML = '<div class="err">저장된 연혁이 없습니다. 먼저 입력 페이지에서 등록하세요.</div>'; return; }
+
+  const btn = $('#analyze-btn'); btn.disabled = true;
+  $('#loader').classList.add('show');
+  $('#out-result').classList.remove('show');
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rfp, format: $('#format-text').value, history: cache })
+    });
+    const data = await res.json();
+    if (data.disabled) {
+      errBox.innerHTML = `<div class="note">${esc(data.error)}</div>`;
+      return;
+    }
+    if (!data.ok) throw new Error(data.error);
+    const p = data.result;
+    $('#a-summary').textContent = p.summary || '-';
+    $('#a-capabilities').innerHTML = (p.capabilities||[]).map(c=>`<li>${esc(c)}</li>`).join('') || '<li>-</li>';
+    $('#a-keywords').innerHTML = (p.matchedKeywords||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join('') || '<span class="chip">없음</span>';
+    $('#outputText').textContent = p.formattedHistory || '적합한 연혁을 찾지 못했습니다.';
+    $('#out-result').classList.add('show');
+    $('#out-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    errBox.innerHTML = `<div class="err">분석 실패: ${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    $('#loader').classList.remove('show');
+  }
+});
+
+$('#copy-btn').addEventListener('click', () => {
+  const text = $('#outputText').textContent;
+  const btn = $('#copy-btn');
+  const done = () => { btn.textContent = '복사 완료 ✓'; btn.classList.add('done'); setTimeout(() => { btn.textContent = '복사하기'; btn.classList.remove('done'); }, 1800); };
+  navigator.clipboard.writeText(text).then(done).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done();
+  });
+});
+
+/* init */
+loadDB();
+</script>
+</body>
+</html>
