@@ -212,7 +212,7 @@
           <option value="year_asc">연도순 (오래된)</option>
         </select>
         <span class="count" id="db-count">불러오는 중...</span>
-        <button class="btn ghost sm" id="db-copy-btn">복사</button>
+        <button class="btn sm" id="db-copy-btn">복사하기</button>
         <button class="btn ghost sm" id="refresh-btn">새로고침</button>
       </div>
       <div id="db-table-wrap"><div class="empty">불러오는 중...</div></div>
@@ -221,7 +221,7 @@
 
   <!-- PAGE 3: OUTPUT -->
   <section class="page" id="page-output">
-    <h1 class="ptitle">제안서 매칭 출력</h1>
+    <h1 class="ptitle">제안서 AI 매칭 출력</h1>
     <p class="psub">제안요청서·과업지시서를 붙여넣으면 AI가 사업을 분석하고 적합한 연혁을 정리합니다.</p>
     <div class="card">
       <label>제안요청서 / 과업지시서 내용</label>
@@ -465,15 +465,13 @@ $('#db-copy-btn').addEventListener('click', () => {
   if (!visibleRows.length) { toast('복사할 데이터가 없습니다', true); return; }
   const text = visibleRows.map(r => {
     const t = (r.time || '').trim() || '-';
-    const kw = kwArray(r.keywords).join(', ');
-    return `[${t}] ${r.content}${kw ? '  (' + kw + ')' : ''}`;
+    return `[${t}] ${r.content}`;
   }).join('\n');
   const btn = $('#db-copy-btn');
   const done = () => {
-    const orig = '복사';
     btn.textContent = `${visibleRows.length}건 복사됨 ✓`;
-    btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)';
-    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1800);
+    btn.style.background = 'var(--green)';
+    setTimeout(() => { btn.textContent = '복사하기'; btn.style.background = ''; }, 1800);
   };
   navigator.clipboard.writeText(text).then(done).catch(() => {
     const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
