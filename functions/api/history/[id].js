@@ -50,12 +50,13 @@ export async function onRequestPut({ request, env, params }) {
 
     const time = normalizeTime(body.time || "");
     const keywords = normalizeKeywords(body.keywords || "");
+    const isDefault = body.is_default ? 1 : 0;
 
     await env.DB.prepare(
-      "UPDATE history SET time = ?, content = ?, keywords = ? WHERE id = ?"
-    ).bind(time, content, keywords, id).run();
+      "UPDATE history SET time = ?, content = ?, keywords = ?, is_default = ? WHERE id = ?"
+    ).bind(time, content, keywords, isDefault, id).run();
 
-    return json({ ok: true, item: { id, time, content, keywords } });
+    return json({ ok: true, item: { id, time, content, keywords, is_default: isDefault } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }
