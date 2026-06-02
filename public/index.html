@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>연혁 매칭</title>
+<title>연혁 매칭 시스템</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -188,7 +188,7 @@
 
       <label>키워드 <span class="hint">띄어쓰기로 여러 개 입력</span></label>
       <input id="in-keywords" placeholder="선정 협력 인가 수상">
-      <div class="kw-examples">예시 키워드: <b>선정 · 협력 · 지정 · 인가 · 등록 · 수상</b></div>
+      <div class="kw-examples">예시 키워드: <b>기본 · 선정 · 협력 · 지정 · 인가 · 등록 · 수상</b></div>
       <div class="chips" id="kw-preview"></div>
 
       <div class="btn-row">
@@ -212,6 +212,7 @@
           <option value="year_asc">연도순 (오래된)</option>
         </select>
         <span class="count" id="db-count">불러오는 중...</span>
+        <button class="btn ghost sm" id="db-copy-btn">복사</button>
         <button class="btn ghost sm" id="refresh-btn">새로고침</button>
       </div>
       <div id="db-table-wrap"><div class="empty">불러오는 중...</div></div>
@@ -336,6 +337,7 @@ $('#clear-btn').addEventListener('click', () => {
 
 /* ============ Page 2: database ============ */
 let cache = [];
+let visibleRows = [];
 let editingId = null;
 
 async function loadDB() {
@@ -381,6 +383,7 @@ function renderDB() {
   });
 
   $('#db-count').textContent = filtered.length + '건';
+  visibleRows = filtered;
   const wrap = $('#db-table-wrap');
   if (!filtered.length) {
     wrap.innerHTML = `<div class="empty">${cache.length===0 ? '아직 저장된 연혁이 없습니다.' : '검색 결과가 없습니다.'}</div>`;
@@ -457,6 +460,26 @@ async function deleteItem(id) {
 $('#db-search').addEventListener('input', renderDB);
 $('#db-sort').addEventListener('change', renderDB);
 $('#refresh-btn').addEventListener('click', loadDB);
+
+$('#db-copy-btn').addEventListener('click', () => {
+  if (!visibleRows.length) { toast('복사할 데이터가 없습니다', true); return; }
+  const text = visibleRows.map(r => {
+    const t = (r.time || '').trim() || '-';
+    const kw = kwArray(r.keywords).join(', ');
+    return `[${t}] ${r.content}${kw ? '  (' + kw + ')' : ''}`;
+  }).join('\n');
+  const btn = $('#db-copy-btn');
+  const done = () => {
+    const orig = '복사';
+    btn.textContent = `${visibleRows.length}건 복사됨 ✓`;
+    btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1800);
+  };
+  navigator.clipboard.writeText(text).then(done).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done();
+  });
+});
 
 /* ============ Page 3: output (AI) ============ */
 $('#analyze-btn').addEventListener('click', async () => {
