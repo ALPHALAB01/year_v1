@@ -96,6 +96,11 @@
   }
   .kw-examples { margin-top: 9px; font-size: 12px; color: var(--ink-dim); }
   .kw-examples b { color: var(--ink); font-weight: 500; }
+  .check-wrap { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; cursor: pointer; color: var(--ink); font-size: 13.5px; font-weight: 400; }
+  .check-wrap input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .check-wrap b { color: var(--accent); font-weight: 600; }
+  .badge-default { display: inline-block; background: var(--accent); color: var(--bg); font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 5px; margin-right: 6px; vertical-align: middle; letter-spacing: .3px; }
+  tr.is-default td { background: rgba(212,168,87,.07); }
 
   .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
   .sort-select {
@@ -104,6 +109,8 @@
     padding: 9px 12px; cursor: pointer;
   }
   .sort-select:focus { outline: none; border-color: var(--accent); }
+  .filter-check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); cursor: pointer; white-space: nowrap; }
+  .filter-check input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
   .search { flex: 1; min-width: 200px; }
   .count { font-size: 13px; color: var(--ink-dim); }
   table { width: 100%; border-collapse: collapse; }
@@ -167,7 +174,7 @@
     <nav>
       <button class="tab active" data-page="input">입력</button>
       <button class="tab" data-page="db">데이터베이스</button>
-      <button class="tab" data-page="output">출력</button>
+      <button class="tab" data-page="output">AI출력</button>
     </nav>
   </div>
 </header>
@@ -191,6 +198,11 @@
       <div class="kw-examples">예시 키워드: <b>기본 · 선정 · 협력 · 지정 · 인가 · 등록 · 수상</b></div>
       <div class="chips" id="kw-preview"></div>
 
+      <label class="check-wrap">
+        <input type="checkbox" id="in-default">
+        <span><b>기본 연혁으로 지정</b> — 체크하면 검색·키워드와 상관없이 데이터베이스에서 항상 표시됩니다.</span>
+      </label>
+
       <div class="btn-row">
         <button class="btn" id="save-btn">데이터베이스에 저장</button>
         <button class="btn ghost" id="clear-btn">입력 초기화</button>
@@ -212,6 +224,7 @@
           <option value="year_asc">연도순 (오래된)</option>
         </select>
         <span class="count" id="db-count">불러오는 중...</span>
+        <label class="filter-check"><input type="checkbox" id="db-default-only"> 기본 포함</label>
         <button class="btn sm" id="db-copy-btn">복사하기</button>
         <button class="btn ghost sm" id="refresh-btn">새로고침</button>
       </div>
@@ -221,7 +234,7 @@
 
   <!-- PAGE 3: OUTPUT -->
   <section class="page" id="page-output">
-    <h1 class="ptitle">제안서 AI 매칭 출력</h1>
+    <h1 class="ptitle">제안서 매칭 출력</h1>
     <p class="psub">제안요청서·과업지시서를 붙여넣으면 AI가 사업을 분석하고 적합한 연혁을 정리합니다.</p>
     <div class="card">
       <label>제안요청서 / 과업지시서 내용</label>
@@ -319,12 +332,14 @@ $('#save-btn').addEventListener('click', async () => {
       body: JSON.stringify({
         time: $('#in-time').value,
         content,
-        keywords: inKw.value
+        keywords: inKw.value,
+        is_default: $('#in-default').checked
       })
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '저장 실패');
     $('#in-time').value = ''; $('#in-content').value = ''; inKw.value = ''; $('#kw-preview').innerHTML = '';
+    $('#in-default').checked = false; $('#time-preview').innerHTML = '';
     toast('저장되었습니다');
   } catch (e) {
     toast('저장 실패: ' + e.message, true);
@@ -333,6 +348,7 @@ $('#save-btn').addEventListener('click', async () => {
 
 $('#clear-btn').addEventListener('click', () => {
   $('#in-time').value = ''; $('#in-content').value = ''; inKw.value = ''; $('#kw-preview').innerHTML = '';
+  $('#in-default').checked = false; $('#time-preview').innerHTML = '';
 });
 
 /* ============ Page 2: database ============ */
@@ -356,11 +372,20 @@ async function loadDB() {
 
 function renderDB() {
   const q = $('#db-search').value.toLowerCase();
-  const filtered = cache.filter(r =>
-    !q || (r.time||'').toLowerCase().includes(q) ||
+  const includeDefault = $('#db-default-only').checked;
+
+  const matchSearch = r =>
+    !q ||
+    (r.time||'').toLowerCase().includes(q) ||
     (r.content||'').toLowerCase().includes(q) ||
-    (r.keywords||'').toLowerCase().includes(q)
-  );
+    (r.keywords||'').toLowerCase().includes(q);
+
+  const filtered = cache.filter(r => {
+    // '기본 포함'이 켜져 있으면 기본 연혁은 검색과 무관하게 항상 표시
+    if (includeDefault && r.is_default) return true;
+    // 그 외에는 검색 조건으로 판단 (검색어 없으면 전부 표시)
+    return matchSearch(r);
+  });
 
   // 정렬
   const sortBy = $('#db-sort').value;
@@ -394,7 +419,10 @@ function renderDB() {
     if (editingId === r.id) {
       html += `<tr class="edit-row" data-id="${r.id}">
         <td><input class="e-time" value="${esc(r.time)}" placeholder="2306"></td>
-        <td><textarea class="e-content" style="min-height:60px">${esc(r.content)}</textarea></td>
+        <td>
+          <textarea class="e-content" style="min-height:60px">${esc(r.content)}</textarea>
+          <label class="filter-check" style="margin-top:8px"><input type="checkbox" class="e-default" ${r.is_default ? 'checked' : ''}> 기본 연혁</label>
+        </td>
         <td><input class="e-kw" value="${esc(r.keywords)}" placeholder="선정 협력"></td>
         <td><div class="row-actions">
           <button class="icon-btn edit save-edit" title="저장">✓</button>
@@ -402,9 +430,9 @@ function renderDB() {
         </div></td>
       </tr>`;
     } else {
-      html += `<tr data-id="${r.id}">
+      html += `<tr data-id="${r.id}" class="${r.is_default ? 'is-default' : ''}">
         <td class="time-cell">${esc(r.time)||'-'}</td>
-        <td>${esc(r.content)}</td>
+        <td>${r.is_default ? '<span class="badge-default">기본</span>' : ''}${esc(r.content)}</td>
         <td><div class="kw-cell">${kwArray(r.keywords).map(k=>`<span class="chip">${esc(k)}</span>`).join('')}</div></td>
         <td><div class="row-actions">
           <button class="icon-btn edit do-edit" title="수정">✎</button>
@@ -435,7 +463,8 @@ async function saveEdit(id) {
       body: JSON.stringify({
         time: row.querySelector('.e-time').value,
         content,
-        keywords: row.querySelector('.e-kw').value
+        keywords: row.querySelector('.e-kw').value,
+        is_default: row.querySelector('.e-default').checked
       })
     });
     const data = await res.json();
@@ -459,6 +488,7 @@ async function deleteItem(id) {
 
 $('#db-search').addEventListener('input', renderDB);
 $('#db-sort').addEventListener('change', renderDB);
+$('#db-default-only').addEventListener('change', renderDB);
 $('#refresh-btn').addEventListener('click', loadDB);
 
 $('#db-copy-btn').addEventListener('click', () => {
