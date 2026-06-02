@@ -98,6 +98,12 @@
   .kw-examples b { color: var(--ink); font-weight: 500; }
 
   .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .sort-select {
+    width: auto; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 9px; color: var(--ink); font-family: inherit; font-size: 13px;
+    padding: 9px 12px; cursor: pointer;
+  }
+  .sort-select:focus { outline: none; border-color: var(--accent); }
   .search { flex: 1; min-width: 200px; }
   .count { font-size: 13px; color: var(--ink-dim); }
   table { width: 100%; border-collapse: collapse; }
@@ -199,6 +205,12 @@
     <div class="card">
       <div class="toolbar">
         <input class="search" id="db-search" placeholder="시기·내용·키워드 검색...">
+        <select id="db-sort" class="sort-select">
+          <option value="created_desc">입력순 (최신)</option>
+          <option value="created_asc">입력순 (오래된)</option>
+          <option value="year_desc">연도순 (최신)</option>
+          <option value="year_asc">연도순 (오래된)</option>
+        </select>
         <span class="count" id="db-count">불러오는 중...</span>
         <button class="btn ghost sm" id="refresh-btn">새로고침</button>
       </div>
@@ -347,6 +359,27 @@ function renderDB() {
     (r.content||'').toLowerCase().includes(q) ||
     (r.keywords||'').toLowerCase().includes(q)
   );
+
+  // 정렬
+  const sortBy = $('#db-sort').value;
+  // 시기(YY.MM)를 비교용 숫자로: 00~68 -> 2000년대, 69~99 -> 1900년대 가정
+  const timeKey = t => {
+    const m = (t||'').match(/(\d{1,2})\.(\d{1,2})/);
+    if (!m) return -1;
+    let yy = parseInt(m[1], 10);
+    const fullYear = yy <= 68 ? 2000 + yy : 1900 + yy;
+    return fullYear * 100 + parseInt(m[2], 10);
+  };
+  filtered.sort((a, b) => {
+    switch (sortBy) {
+      case 'created_asc': return a.created_at - b.created_at;
+      case 'year_desc':   return timeKey(b.time) - timeKey(a.time) || b.created_at - a.created_at;
+      case 'year_asc':    return timeKey(a.time) - timeKey(b.time) || a.created_at - b.created_at;
+      case 'created_desc':
+      default:            return b.created_at - a.created_at;
+    }
+  });
+
   $('#db-count').textContent = filtered.length + '건';
   const wrap = $('#db-table-wrap');
   if (!filtered.length) {
@@ -422,6 +455,7 @@ async function deleteItem(id) {
 }
 
 $('#db-search').addEventListener('input', renderDB);
+$('#db-sort').addEventListener('change', renderDB);
 $('#refresh-btn').addEventListener('click', loadDB);
 
 /* ============ Page 3: output (AI) ============ */
