@@ -174,7 +174,7 @@
     <nav>
       <button class="tab active" data-page="input">입력</button>
       <button class="tab" data-page="db">데이터베이스</button>
-      <button class="tab" data-page="output">AI출력</button>
+      <button class="tab" data-page="output">AI출력(미지원)</button>
     </nav>
   </div>
 </header>
@@ -225,6 +225,7 @@
         </select>
         <span class="count" id="db-count">불러오는 중...</span>
         <label class="filter-check"><input type="checkbox" id="db-default-only"> 기본 포함</label>
+        <button class="btn ghost sm" id="paren-toggle-btn">괄호 추가</button>
         <button class="btn sm" id="db-copy-btn">복사하기</button>
         <button class="btn ghost sm" id="refresh-btn">새로고침</button>
       </div>
@@ -491,11 +492,25 @@ $('#db-sort').addEventListener('change', renderDB);
 $('#db-default-only').addEventListener('change', renderDB);
 $('#refresh-btn').addEventListener('click', loadDB);
 
+let useParens = false;
+$('#paren-toggle-btn').addEventListener('click', () => {
+  useParens = !useParens;
+  const b = $('#paren-toggle-btn');
+  if (useParens) {
+    b.classList.remove('ghost');
+    b.textContent = '괄호 추가 ✓';
+  } else {
+    b.classList.add('ghost');
+    b.textContent = '괄호 추가';
+  }
+});
+
 $('#db-copy-btn').addEventListener('click', () => {
   if (!visibleRows.length) { toast('복사할 데이터가 없습니다', true); return; }
   const text = visibleRows.map(r => {
     const t = (r.time || '').trim() || '-';
-    return `[${t}] ${r.content}`;
+    const timePart = useParens ? `(${t})` : t;
+    return `${timePart} ${r.content}`;
   }).join('\n');
   const btn = $('#db-copy-btn');
   const done = () => {
