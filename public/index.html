@@ -174,7 +174,7 @@
     <nav>
       <button class="tab active" data-page="input">입력</button>
       <button class="tab" data-page="db">데이터베이스</button>
-      <button class="tab" data-page="output">AI출력(미지원)</button>
+      <button class="tab" data-page="output">AI분석 프롬포트 출력</button>
     </nav>
   </div>
 </header>
@@ -235,33 +235,32 @@
 
   <!-- PAGE 3: OUTPUT -->
   <section class="page" id="page-output">
-    <h1 class="ptitle">제안서 매칭 출력</h1>
-    <p class="psub">제안요청서·과업지시서를 붙여넣으면 AI가 사업을 분석하고 적합한 연혁을 정리합니다.</p>
+    <h1 class="ptitle">제안서 매칭 프롬프트 생성</h1>
+    <p class="psub">제안요청서를 붙여넣으면, 저장된 연혁과 합쳐 Claude에게 보낼 프롬프트를 만들어 드립니다. 복사해서 claude.ai 채팅에 붙여넣으면 AI가 분석·정리해 줍니다. (추가 비용 없음)</p>
     <div class="card">
       <label>제안요청서 / 과업지시서 내용</label>
       <textarea class="tall" id="rfp-text" placeholder="제안요청서(RFP) 또는 과업지시서 전문을 붙여넣으세요..."></textarea>
 
       <label>출력 양식 <span class="hint">원하는 연혁 표기 형식 (선택)</span></label>
-      <input id="format-text" placeholder="예: [시기] 사업명 — 주요 수행내용">
+      <input id="format-text" placeholder="예: (시기) 사업명 — 주요 수행내용">
+
+      <label class="check-wrap" style="margin-top:18px">
+        <input type="checkbox" id="prompt-default-only">
+        <span>기본 연혁만 포함 (체크 해제 시 저장된 모든 연혁 포함)</span>
+      </label>
 
       <div class="btn-row">
-        <button class="btn" id="analyze-btn">AI 분석 및 매칭 실행</button>
+        <button class="btn" id="gen-prompt-btn">프롬프트 생성</button>
       </div>
-      <div class="loader" id="loader"><div class="spin"></div><span>사업 내용을 분석하는 중...</span></div>
       <div id="err-box"></div>
     </div>
 
     <div class="out-result" id="out-result">
-      <div class="analysis-grid">
-        <div class="a-box"><h4>사업 내용 인식</h4><p id="a-summary"></p></div>
-        <div class="a-box"><h4>요구 역량</h4><ul id="a-capabilities"></ul></div>
-      </div>
-      <div class="a-box" style="margin-bottom:22px">
-        <h4>적합 키워드 매칭</h4>
-        <div class="matched-kw" id="a-keywords"></div>
+      <div class="note" style="margin-top:0">
+        아래 내용을 복사해 <b>claude.ai</b> 채팅에 붙여넣으세요. Claude가 사업을 분석하고 적합한 연혁을 골라 정리해 줍니다.
       </div>
       <div class="output-block">
-        <div class="lbl">제안서용 연혁 (복사 가능)</div>
+        <div class="lbl">생성된 프롬프트 (<span id="prompt-count">0</span>건 연혁 포함)</div>
         <button class="btn copy-btn" id="copy-btn">복사하기</button>
         <div id="outputText"></div>
       </div>
@@ -524,46 +523,55 @@ $('#db-copy-btn').addEventListener('click', () => {
   });
 });
 
-/* ============ Page 3: output (AI) ============ */
-$('#analyze-btn').addEventListener('click', async () => {
+/* ============ Page 3: 프롬프트 생성 ============ */
+$('#gen-prompt-btn').addEventListener('click', async () => {
   const rfp = $('#rfp-text').value.trim();
+  const fmt = $('#format-text').value.trim();
   const errBox = $('#err-box'); errBox.innerHTML = '';
   if (!rfp) { toast('제안요청서 내용을 입력하세요', true); return; }
   if (!cache.length) { await loadDB(); }
   if (!cache.length) { errBox.innerHTML = '<div class="err">저장된 연혁이 없습니다. 먼저 입력 페이지에서 등록하세요.</div>'; return; }
 
-  const btn = $('#analyze-btn'); btn.disabled = true;
-  $('#loader').classList.add('show');
-  $('#out-result').classList.remove('show');
-  try {
-    const res = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rfp, format: $('#format-text').value, history: cache })
-    });
-    const data = await res.json();
-    if (data.disabled) {
-      errBox.innerHTML = `<div class="note">${esc(data.error)}</div>`;
-      return;
-    }
-    if (!data.ok) throw new Error(data.error);
-    const p = data.result;
-    $('#a-summary').textContent = p.summary || '-';
-    $('#a-capabilities').innerHTML = (p.capabilities||[]).map(c=>`<li>${esc(c)}</li>`).join('') || '<li>-</li>';
-    $('#a-keywords').innerHTML = (p.matchedKeywords||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join('') || '<span class="chip">없음</span>';
-    $('#outputText').textContent = p.formattedHistory || '적합한 연혁을 찾지 못했습니다.';
-    $('#out-result').classList.add('show');
-    $('#out-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (e) {
-    errBox.innerHTML = `<div class="err">분석 실패: ${esc(e.message)}</div>`;
-  } finally {
-    btn.disabled = false;
-    $('#loader').classList.remove('show');
-  }
+  // 포함할 연혁 선택
+  const defaultOnly = $('#prompt-default-only').checked;
+  const rows = defaultOnly ? cache.filter(r => r.is_default) : cache;
+  if (!rows.length) { errBox.innerHTML = '<div class="err">포함할 연혁이 없습니다. (기본 연혁만 포함 옵션을 해제해 보세요.)</div>'; return; }
+
+  // 연혁을 읽기 좋은 목록으로
+  const historyText = rows.map(r => {
+    const t = (r.time || '').trim() || '-';
+    const kw = kwArray(r.keywords).join(', ');
+    return `- (${t}) ${r.content}${kw ? ` [키워드: ${kw}]` : ''}`;
+  }).join('\n');
+
+  const fmtLine = fmt
+    ? `\n[출력 양식] 선정한 연혁은 반드시 다음 형식으로 정리해줘:\n${fmt}\n`
+    : `\n[출력 양식] 선정한 연혁은 "(시기) 사업명 — 주요 수행내용" 형태로 한 줄씩 정리해줘.\n`;
+
+  const prompt =
+`너는 정부 용역사업 제안서 작성 전문가야. 아래 [제안요청서]를 분석하고, [보유 연혁] 중에서 이 사업에 적합한 실적만 골라 제안서에 넣을 형태로 정리해줘.
+
+다음 순서로 답해줘:
+1) 사업 내용 요약 (2~3문장)
+2) 이 사업이 제안사에 요구하는 핵심 역량
+3) 적합한 연혁 선정 및 정리
+${fmtLine}
+[제안요청서]
+${rfp}
+
+[보유 연혁]
+${historyText}`;
+
+  $('#outputText').textContent = prompt;
+  $('#prompt-count').textContent = rows.length;
+  $('#out-result').classList.add('show');
+  $('#out-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast('프롬프트가 생성되었습니다');
 });
 
 $('#copy-btn').addEventListener('click', () => {
   const text = $('#outputText').textContent;
+  if (!text) { toast('먼저 프롬프트를 생성하세요', true); return; }
   const btn = $('#copy-btn');
   const done = () => { btn.textContent = '복사 완료 ✓'; btn.classList.add('done'); setTimeout(() => { btn.textContent = '복사하기'; btn.classList.remove('done'); }, 1800); };
   navigator.clipboard.writeText(text).then(done).catch(() => {
